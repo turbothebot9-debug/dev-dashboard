@@ -407,6 +407,90 @@
       background: var(--border);
       border-radius: 3px;
     }
+    
+    /* Pomodoro Timer */
+    .pomodoro-display {
+      text-align: center;
+      padding: 20px 0;
+    }
+    
+    .pomodoro-time {
+      font-size: 72px;
+      font-weight: 200;
+      font-family: 'SF Mono', 'Monaco', monospace;
+      color: var(--text);
+      letter-spacing: 4px;
+    }
+    
+    .pomodoro-status {
+      font-size: 14px;
+      color: var(--text-dim);
+      margin-top: 8px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+    }
+    
+    .pomodoro-status.focus { color: var(--red); }
+    .pomodoro-status.break { color: var(--green); }
+    
+    .pomodoro-controls {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    
+    .pomo-btn {
+      padding: 12px 24px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .pomo-btn:hover {
+      background: var(--bg-hover);
+    }
+    
+    .pomo-btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    
+    .pomo-btn.primary:hover {
+      filter: brightness(1.1);
+    }
+    
+    .pomodoro-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+    
+    .pomo-stat {
+      text-align: center;
+    }
+    
+    .pomo-stat-value {
+      font-size: 24px;
+      font-weight: 600;
+      color: var(--accent);
+    }
+    
+    .pomo-stat-label {
+      font-size: 11px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -553,6 +637,32 @@
           <button class="todo-add" onclick="addTodo()">Add</button>
         </div>
         <div class="todo-list" id="todo-list"></div>
+      </div>
+
+      <!-- Pomodoro Timer -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🍅 Pomodoro Timer</span>
+        </div>
+        <div class="pomodoro-display">
+          <div class="pomodoro-time" id="pomo-time">25:00</div>
+          <div class="pomodoro-status" id="pomo-status">Ready to focus</div>
+        </div>
+        <div class="pomodoro-controls">
+          <button class="pomo-btn primary" id="pomo-start" onclick="pomoToggle()">Start</button>
+          <button class="pomo-btn" onclick="pomoReset()">Reset</button>
+          <button class="pomo-btn" onclick="pomoSkip()">Skip</button>
+        </div>
+        <div class="pomodoro-stats">
+          <div class="pomo-stat">
+            <div class="pomo-stat-value" id="pomo-completed">0</div>
+            <div class="pomo-stat-label">Pomodoros</div>
+          </div>
+          <div class="pomo-stat">
+            <div class="pomo-stat-value" id="pomo-focus-time">0h 0m</div>
+            <div class="pomo-stat-label">Focus Time</div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -739,6 +849,145 @@
     }
 
     renderTodos();
+
+    // ===== Pomodoro Timer =====
+    const POMO_FOCUS = 25 * 60;  // 25 minutes
+    const POMO_SHORT = 5 * 60;   // 5 minute break
+    const POMO_LONG = 15 * 60;   // 15 minute break (every 4 pomodoros)
+    
+    let pomoState = JSON.parse(localStorage.getItem('dashboard-pomo') || JSON.stringify({
+      timeLeft: POMO_FOCUS,
+      isRunning: false,
+      mode: 'focus',  // 'focus', 'short', 'long'
+      completed: 0,
+      totalFocusSeconds: 0
+    }));
+    
+    let pomoInterval = null;
+    
+    function formatPomoTime(seconds) {
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    }
+    
+    function formatFocusTime(seconds) {
+      const h = Math.floor(seconds / 3600);
+      const m = Math.floor((seconds % 3600) / 60);
+      return `${h}h ${m}m`;
+    }
+    
+    function updatePomoDisplay() {
+      document.getElementById('pomo-time').textContent = formatPomoTime(pomoState.timeLeft);
+      
+      const statusEl = document.getElementById('pomo-status');
+      statusEl.className = 'pomodoro-status ' + pomoState.mode;
+      
+      if (pomoState.isRunning) {
+        statusEl.textContent = pomoState.mode === 'focus' ? '🔥 Focus time!' : '☕ Take a break';
+      } else {
+        statusEl.textContent = pomoState.mode === 'focus' ? 'Ready to focus' : 'Break time';
+      }
+      
+      document.getElementById('pomo-completed').textContent = pomoState.completed;
+      document.getElementById('pomo-focus-time').textContent = formatFocusTime(pomoState.totalFocusSeconds);
+      document.getElementById('pomo-start').textContent = pomoState.isRunning ? 'Pause' : 'Start';
+      
+      localStorage.setItem('dashboard-pomo', JSON.stringify(pomoState));
+    }
+    
+    function pomoTick() {
+      if (pomoState.timeLeft <= 0) {
+        // Timer finished
+        pomoTimerComplete();
+        return;
+      }
+      
+      pomoState.timeLeft--;
+      if (pomoState.mode === 'focus') {
+        pomoState.totalFocusSeconds++;
+      }
+      updatePomoDisplay();
+    }
+    
+    function pomoTimerComplete() {
+      pomoState.isRunning = false;
+      clearInterval(pomoInterval);
+      pomoInterval = null;
+      
+      // Play notification sound
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2teleQwZmdbdp2xdCABc0/THo2kRE4vl7p2CLQBG1frLnHMkDp3v6YuHRABE4PavYmcwMqnz44R5UwNW5PSgVm1BQLT26HuBawpg5/CYTXFVXbzz7HN8fRhl7++STXRZZ8T27XV7hB9w8O+JQnFbdMr46HZ5iidz9u+CMm1bgtH65HV0kTF08/B9J2hdjtX83HFwlzt38/F4H2JglNn71G5snjx69vJzGFxfnN79zGlrpD599vRwFF1hpOD9xWNppUJ+9/RuE19irOH9wF9npUmD+vJpDltks+T9ul1lpE+H+/BmC1hkuef8tFpkpFOL/e5jCFZlv+r7r1hjpFeP/exgBVNlxe37qVZip1uR/ulcAVFmy+/5o1Nip1+V/udYAE9m0PH4nltiqGGX/uVU');
+        audio.play().catch(() => {});
+      } catch (e) {}
+      
+      // Show browser notification
+      if (Notification.permission === 'granted') {
+        new Notification(pomoState.mode === 'focus' ? '🍅 Pomodoro complete!' : '☕ Break over!', {
+          body: pomoState.mode === 'focus' ? 'Time for a break!' : 'Ready for another focus session?',
+          icon: '🍅'
+        });
+      }
+      
+      // Switch mode
+      if (pomoState.mode === 'focus') {
+        pomoState.completed++;
+        // Long break every 4 pomodoros
+        if (pomoState.completed % 4 === 0) {
+          pomoState.mode = 'long';
+          pomoState.timeLeft = POMO_LONG;
+        } else {
+          pomoState.mode = 'short';
+          pomoState.timeLeft = POMO_SHORT;
+        }
+      } else {
+        pomoState.mode = 'focus';
+        pomoState.timeLeft = POMO_FOCUS;
+      }
+      
+      updatePomoDisplay();
+    }
+    
+    function pomoToggle() {
+      if (pomoState.isRunning) {
+        pomoState.isRunning = false;
+        clearInterval(pomoInterval);
+        pomoInterval = null;
+      } else {
+        pomoState.isRunning = true;
+        pomoInterval = setInterval(pomoTick, 1000);
+        
+        // Request notification permission
+        if (Notification.permission === 'default') {
+          Notification.requestPermission();
+        }
+      }
+      updatePomoDisplay();
+    }
+    
+    function pomoReset() {
+      pomoState.isRunning = false;
+      clearInterval(pomoInterval);
+      pomoInterval = null;
+      pomoState.timeLeft = pomoState.mode === 'focus' ? POMO_FOCUS : 
+                          pomoState.mode === 'short' ? POMO_SHORT : POMO_LONG;
+      updatePomoDisplay();
+    }
+    
+    function pomoSkip() {
+      pomoState.isRunning = false;
+      clearInterval(pomoInterval);
+      pomoInterval = null;
+      pomoTimerComplete();
+    }
+    
+    // Initialize display
+    updatePomoDisplay();
+    
+    // Resume if was running
+    if (pomoState.isRunning) {
+      pomoInterval = setInterval(pomoTick, 1000);
+    }
   </script>
 </body>
 </html>

@@ -491,6 +491,193 @@
       text-transform: uppercase;
       margin-top: 4px;
     }
+
+    /* Habit Tracker Styles */
+    .habits-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+
+    .habit-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      background: var(--bg);
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .habit-item:hover {
+      background: var(--bg-hover);
+    }
+
+    .habit-item.completed {
+      opacity: 0.6;
+    }
+
+    .habit-item.completed .habit-name {
+      text-decoration: line-through;
+    }
+
+    .habit-checkbox {
+      width: 22px;
+      height: 22px;
+      border: 2px solid var(--border);
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    .habit-checkbox:hover {
+      border-color: var(--accent);
+    }
+
+    .habit-item.completed .habit-checkbox {
+      background: var(--green);
+      border-color: var(--green);
+    }
+
+    .habit-item.completed .habit-checkbox::after {
+      content: '✓';
+      color: white;
+      font-size: 14px;
+    }
+
+    .habit-name {
+      flex: 1;
+      font-size: 14px;
+    }
+
+    .habit-delete {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      cursor: pointer;
+      padding: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .habit-item:hover .habit-delete {
+      opacity: 1;
+    }
+
+    .habit-delete:hover {
+      color: var(--red);
+    }
+
+    .habits-add {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    .habits-add input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .habits-add input:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .habits-add button {
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      width: 40px;
+      color: white;
+      font-size: 20px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .habits-add button:hover {
+      background: #4a94e6;
+    }
+
+    .habits-progress {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .habits-progress-bar {
+      flex: 1;
+      height: 8px;
+      background: var(--bg);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .habits-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--green), var(--accent));
+      border-radius: 4px;
+      transition: width 0.3s ease;
+      width: 0%;
+    }
+
+    .habits-progress-text {
+      font-size: 12px;
+      color: var(--text-dim);
+      white-space: nowrap;
+    }
+
+    .habits-empty {
+      text-align: center;
+      padding: 20px;
+      color: var(--text-dim);
+      font-size: 14px;
+    }
+
+    /* Quick Notes Styles */
+    .quick-notes {
+      width: 100%;
+      min-height: 150px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text);
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    .quick-notes:focus {
+      outline: none;
+      border-color: var(--accent);
+    }
+
+    .icon-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      opacity: 0.6;
+      transition: opacity 0.2s;
+    }
+
+    .icon-btn:hover {
+      opacity: 1;
+    }
   </style>
 </head>
 <body>
@@ -663,6 +850,36 @@
             <div class="pomo-stat-label">Focus Time</div>
           </div>
         </div>
+      </div>
+
+      <!-- Habit Tracker -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">🎯 Daily Habits</span>
+          <span class="card-badge" id="habits-streak">🔥 0 day streak</span>
+        </div>
+        <div class="habits-list" id="habits-list">
+          <!-- Populated by JS -->
+        </div>
+        <div class="habits-add">
+          <input type="text" id="new-habit-input" placeholder="Add new habit..." maxlength="30">
+          <button onclick="addHabit()">+</button>
+        </div>
+        <div class="habits-progress">
+          <div class="habits-progress-bar">
+            <div class="habits-progress-fill" id="habits-progress-fill"></div>
+          </div>
+          <span class="habits-progress-text" id="habits-progress-text">0 / 0 completed</span>
+        </div>
+      </div>
+
+      <!-- Quick Notes -->
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">📝 Quick Notes</span>
+          <button class="icon-btn" onclick="clearNotes()" title="Clear">🗑️</button>
+        </div>
+        <textarea id="quick-notes" class="quick-notes" placeholder="Jot down quick thoughts, ideas, or reminders..."></textarea>
       </div>
     </div>
   </div>
@@ -987,6 +1204,157 @@
     // Resume if was running
     if (pomoState.isRunning) {
       pomoInterval = setInterval(pomoTick, 1000);
+    }
+
+    // ===== Habit Tracker =====
+    const HABITS_KEY = 'dashboard-habits';
+    const HABITS_HISTORY_KEY = 'dashboard-habits-history';
+    
+    let habits = JSON.parse(localStorage.getItem(HABITS_KEY)) || [
+      { id: '1', name: '💻 Code for 1 hour', completed: false },
+      { id: '2', name: '📚 Read 30 mins', completed: false },
+      { id: '3', name: '🏃 Exercise', completed: false }
+    ];
+    
+    let habitsHistory = JSON.parse(localStorage.getItem(HABITS_HISTORY_KEY)) || {};
+    
+    function getTodayKey() {
+      return new Date().toISOString().split('T')[0];
+    }
+    
+    function saveHabits() {
+      localStorage.setItem(HABITS_KEY, JSON.stringify(habits));
+      localStorage.setItem(HABITS_HISTORY_KEY, JSON.stringify(habitsHistory));
+    }
+    
+    function renderHabits() {
+      const container = document.getElementById('habits-list');
+      
+      if (habits.length === 0) {
+        container.innerHTML = '<div class="habits-empty">Add habits to track your daily goals!</div>';
+      } else {
+        container.innerHTML = habits.map(habit => `
+          <div class="habit-item ${habit.completed ? 'completed' : ''}" data-id="${habit.id}">
+            <div class="habit-checkbox" onclick="toggleHabit('${habit.id}')"></div>
+            <span class="habit-name">${habit.name}</span>
+            <button class="habit-delete" onclick="deleteHabit('${habit.id}')">✕</button>
+          </div>
+        `).join('');
+      }
+      
+      // Update progress
+      const completed = habits.filter(h => h.completed).length;
+      const total = habits.length;
+      const percentage = total > 0 ? (completed / total * 100) : 0;
+      
+      document.getElementById('habits-progress-fill').style.width = percentage + '%';
+      document.getElementById('habits-progress-text').textContent = `${completed} / ${total} completed`;
+      
+      // Update streak
+      updateStreak();
+    }
+    
+    function toggleHabit(id) {
+      const habit = habits.find(h => h.id === id);
+      if (habit) {
+        habit.completed = !habit.completed;
+        
+        // Track in history
+        const today = getTodayKey();
+        if (!habitsHistory[today]) habitsHistory[today] = {};
+        habitsHistory[today][id] = habit.completed;
+        
+        saveHabits();
+        renderHabits();
+      }
+    }
+    
+    function addHabit() {
+      const input = document.getElementById('new-habit-input');
+      const name = input.value.trim();
+      
+      if (name) {
+        habits.push({
+          id: Date.now().toString(),
+          name: name,
+          completed: false
+        });
+        input.value = '';
+        saveHabits();
+        renderHabits();
+      }
+    }
+    
+    function deleteHabit(id) {
+      habits = habits.filter(h => h.id !== id);
+      saveHabits();
+      renderHabits();
+    }
+    
+    function updateStreak() {
+      let streak = 0;
+      const today = new Date();
+      
+      for (let i = 0; i < 365; i++) {
+        const date = new Date(today);
+        date.setDate(date.getDate() - i);
+        const key = date.toISOString().split('T')[0];
+        
+        const dayHistory = habitsHistory[key];
+        if (dayHistory) {
+          const completedAll = Object.values(dayHistory).every(v => v === true);
+          if (completedAll && Object.keys(dayHistory).length >= habits.length) {
+            streak++;
+          } else if (i > 0) {
+            break;
+          }
+        } else if (i > 0) {
+          break;
+        }
+      }
+      
+      document.getElementById('habits-streak').textContent = `🔥 ${streak} day streak`;
+    }
+    
+    // Reset habits at midnight
+    function checkDayReset() {
+      const lastReset = localStorage.getItem('dashboard-habits-lastReset');
+      const today = getTodayKey();
+      
+      if (lastReset !== today) {
+        // New day - reset completion status
+        habits.forEach(h => h.completed = false);
+        localStorage.setItem('dashboard-habits-lastReset', today);
+        saveHabits();
+        renderHabits();
+      }
+    }
+    
+    // Enter key to add habit
+    document.getElementById('new-habit-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addHabit();
+    });
+    
+    checkDayReset();
+    renderHabits();
+
+    // ===== Quick Notes =====
+    const NOTES_KEY = 'dashboard-quick-notes';
+    const notesTextarea = document.getElementById('quick-notes');
+    
+    // Load saved notes
+    notesTextarea.value = localStorage.getItem(NOTES_KEY) || '';
+    
+    // Auto-save on change
+    notesTextarea.addEventListener('input', () => {
+      localStorage.setItem(NOTES_KEY, notesTextarea.value);
+    });
+    
+    function clearNotes() {
+      if (notesTextarea.value && confirm('Clear all notes?')) {
+        notesTextarea.value = '';
+        localStorage.removeItem(NOTES_KEY);
+      }
     }
   </script>
 </body>
